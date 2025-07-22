@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="logo.png" type="image/png">
+  <title>Admin Panel - ICT Classroom</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(to right, #4a90e2, #6a11cb);
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      padding: 20px;
+    }
+    .admin-box {
+      background: white;
+      color: #333;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.15);
+      max-width: 900px;
+      margin: auto;
+    }
+    .nav-link.active {
+      background-color: #4a90e2 !important;
+      color: white !important;
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-box">
+  <h3 class="text-center mb-4">🛠️ Admin Dashboard - ICT Classroom</h3>
+
+  <!-- ✅ Top-right Student Link -->
+  <div class="text-end mb-3">
+    <a href="adminstudents.html" class="btn btn-outline-primary">👨‍🎓 Manage Students</a>
+  </div>
+
+  <!-- ✅ Navigation Tabs -->
+  <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="lessons-tab" data-bs-toggle="tab" data-bs-target="#lessons" type="button" role="tab">🎥 Add Lesson</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tests-tab" data-bs-toggle="tab" data-bs-target="#tests" type="button" role="tab">📝 Add Test</button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="adminTabsContent">
+    <!-- ✅ Upload Lesson Tab -->
+    <div class="tab-pane fade show active" id="lessons" role="tabpanel">
+      <h4 class="mb-3">📚 Upload Lesson</h4>
+      <form id="lessonForm">
+        <div class="mb-3">
+          <label for="lessonTitle" class="form-label">Lesson Title</label>
+          <input type="text" class="form-control" id="lessonTitle" required />
+        </div>
+        <div class="mb-3">
+          <label for="lessonContent" class="form-label">Lesson Content (Text or YouTube URL)</label>
+          <textarea class="form-control" id="lessonContent" rows="4" required></textarea>
+          <button type="button" class="btn btn-sm btn-warning mt-2" onclick="extractYouTubeText()">🎬 Extract Text from YouTube</button>
+        </div>
+        <button type="submit" id="saveButton" class="btn btn-primary">Save Lesson</button>
+        <div id="saveMessage" class="mt-2 text-success"></div>
+      </form>
+
+      <!-- ✅ Display saved lessons -->
+      <div id="lessonList" class="mt-4"></div>
+    </div>
+
+    <!-- ✅ Add Test Tab -->
+    <div class="tab-pane fade" id="tests" role="tabpanel">
+      <form id="testForm">
+        <h4>Add a New Test Question</h4>
+        <div class="mb-3">
+          <label for="questionText" class="form-label">Question</label>
+          <textarea class="form-control" id="questionText" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Options</label>
+          <input type="text" class="form-control mb-2" id="optionA" placeholder="Option A" required />
+          <input type="text" class="form-control mb-2" id="optionB" placeholder="Option B" required />
+          <input type="text" class="form-control mb-2" id="optionC" placeholder="Option C" required />
+          <input type="text" class="form-control mb-2" id="optionD" placeholder="Option D" required />
+        </div>
+        <div class="mb-3">
+          <label for="correctAnswer" class="form-label">Correct Answer (A, B, C, or D)</label>
+          <input type="text" class="form-control" id="correctAnswer" maxlength="1" required />
+        </div>
+        <button type="submit" class="btn btn-success w-100">Add Test Question</button>
+        <div id="testMessage" class="mt-3 text-success text-center"></div>
+      </form>
+
+      <h5 class="mt-4">📝 Test Questions</h5>
+      <div id="testList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JavaScript Logic -->
+<script>
+  let editingIndex = -1;
+
+  function loadLessons() {
+    const lessons = JSON.parse(localStorage.getItem("lessons")) || [];
+    const listDiv = document.getElementById("lessonList");
+    listDiv.innerHTML = "";
+
+    lessons.forEach((lesson, index) => {
+      const card = document.createElement("div");
+      card.className = "card mb-3 p-3";
+      card.innerHTML = `
+        <h5>${lesson.title}</h5>
+        <p>${lesson.content}</p>
+        <button class="btn btn-sm btn-outline-primary me-2" onclick="editLesson(${index})">✏️ Edit</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteLesson(${index})">🗑️ Delete</button>
+      `;
+      listDiv.appendChild(card);
+    });
+  }
+
+  function editLesson(index) {
+    const lessons = JSON.parse(localStorage.getItem("lessons")) || [];
+    const lesson = lessons[index];
+    document.getElementById("lessonTitle").value = lesson.title;
+    document.getElementById("lessonContent").value = lesson.content;
+    editingIndex = index;
+    document.getElementById("saveButton").textContent = "Update Lesson";
+  }
+
+  function deleteLesson(index) {
+    const lessons = JSON.parse(localStorage.getItem("lessons")) || [];
+    lessons.splice(index, 1);
+    localStorage.setItem("lessons", JSON.stringify(lessons));
+    loadLessons();
+  }
+
+  document.getElementById("lessonForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const title = document.getElementById("lessonTitle").value.trim();
+    const content = document.getElementById("lessonContent").value.trim();
+    const message = document.getElementById("saveMessage");
+    let lessons = JSON.parse(localStorage.getItem("lessons")) || [];
+
+    if (editingIndex >= 0) {
+      lessons[editingIndex] = { title, content };
+      editingIndex = -1;
+      document.getElementById("saveButton").textContent = "Save Lesson";
+      message.textContent = "✅ Lesson updated successfully!";
+    } else {
+      lessons.push({ title, content });
+      message.textContent = "✅ Lesson added successfully!";
+    }
+
+    localStorage.setItem("lessons", JSON.stringify(lessons));
+    this.reset();
+    loadLessons();
+  });
+
+  function extractYouTubeText() {
+    const content = document.getElementById("lessonContent").value.trim();
+    if (!content.includes("youtube.com") && !content.includes("youtu.be")) {
+      alert("❌ Please enter a valid YouTube URL.");
+      return;
+    }
+    document.getElementById("lessonContent").value =
+      "📄 Extracted text from YouTube video:\n\n[Transcript goes here...]";
+  }
+
+  function loadTests() {
+    const tests = JSON.parse(localStorage.getItem("tests")) || [];
+    const container = document.getElementById("testList");
+    container.innerHTML = "";
+    tests.forEach((q, i) => {
+      const div = document.createElement("div");
+      div.className = "card my-2 p-2";
+      div.innerHTML = `
+        <strong>Q${i + 1}: ${q.question}</strong>
+        <ul>
+          <li>A. ${q.options.A}</li>
+          <li>B. ${q.options.B}</li>
+          <li>C. ${q.options.C}</li>
+          <li>D. ${q.options.D}</li>
+        </ul>
+        <p><strong>Answer:</strong> ${q.answer}</p>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  document.getElementById("testForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const question = document.getElementById("questionText").value.trim();
+    const options = {
+      A: document.getElementById("optionA").value.trim(),
+      B: document.getElementById("optionB").value.trim(),
+      C: document.getElementById("optionC").value.trim(),
+      D: document.getElementById("optionD").value.trim(),
+    };
+    const answer = document.getElementById("correctAnswer").value.trim().toUpperCase();
+
+    if (!['A', 'B', 'C', 'D'].includes(answer)) {
+      document.getElementById("testMessage").textContent = "❌ Answer must be A, B, C, or D";
+      return;
+    }
+
+    const questionObj = { question, options, answer };
+    const testData = JSON.parse(localStorage.getItem("tests")) || [];
+    testData.push(questionObj);
+    localStorage.setItem("tests", JSON.stringify(testData));
+    this.reset();
+    document.getElementById("testMessage").textContent = "✅ Question added!";
+    loadTests();
+  });
+
+  window.onload = function () {
+    loadLessons();
+    loadTests();
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
